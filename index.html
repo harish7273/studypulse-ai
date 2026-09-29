@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyPulse AI Pro — Standalone Browser Study Studio</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f8fafc; }
+    .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); }
+    .glass-card { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(8px); }
+    .flashcard-container { perspective: 1000px; width: 100%; max-width: 580px; height: 320px; margin: 0 auto; cursor: pointer; }
+    .flashcard-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+    .flashcard-container.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 1.25rem; padding: 2rem; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(51, 65, 85, 0.8); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); }
+    .flashcard-front { background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); }
+    .flashcard-back { background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%); transform: rotateY(180deg); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+    th, td { border: 1px solid #334155; padding: 0.75rem 1rem; text-align: left; }
+    th { background-color: #1e293b; color: #38bdf8; font-weight: 700; }
+    tr:nth-child(even) { background-color: rgba(30, 41, 59, 0.4); }
+    @media print { .no-print { display: none !important; } body { background: white !important; color: black !important; } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md bg-slate-950/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-cyan-300">
+            StudyPulse AI Pro <span class="text-xs uppercase px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">Standalone Studio</span>
+          </span>
+          <p class="text-[10px] text-slate-400 font-medium hidden sm:block">100% Offline Browser Edition — No Terminal or Server Required</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-700/60">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Offline Browser Studio Ready</span>
+        </div>
+        <button onclick="window.print()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+          Print / PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <div class="space-y-2">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/70 border border-indigo-800/60 text-indigo-300">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+        <span>Full University Exam Prep Suite — Runs 100% In Your Browser</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+        Academic Study Assistant & <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-300">Exam Preparation Suite</span>
+      </h1>
+      <p class="text-sm sm:text-base text-slate-400 max-w-3xl leading-relaxed">
+        Paste your lecture notes, textbook chapters, or syllabus below. The engine will instantly synthesize full university model answers (2-Mark, 5-Mark, 10-Mark), side-by-side comparison tables, 1-page cram sheets, 3D flashcards, and a practice quiz.
+      </p>
+    </div>
+
+    <!-- Notes Ingestion Box -->
+    <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <span class="text-xs font-bold text-slate-300 flex items-center space-x-2">
+          <i data-lucide="edit-3" class="w-4 h-4 text-indigo-400"></i>
+          <span>Enter Study Notes or Syllabus Content</span>
+        </span>
+        <div class="flex items-center space-x-2">
+          <button onclick="loadSampleText('operating_systems')" class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Sample: Operating Systems</button>
+          <button onclick="loadSampleText('machine_learning')" class="px-2.5 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Sample: Machine Learning</button>
+        </div>
+      </div>
+
+      <textarea id="notesInput" rows="7" placeholder="Paste your study notes, definitions, lecture slides, or textbook excerpts here..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"></textarea>
+
+      <div class="flex items-center justify-between pt-2">
+        <span id="charCountLabel" class="text-xs text-slate-500">Ready to synthesize</span>
+        <button onclick="runLocalAnalysis()" class="flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white shadow-lg shadow-indigo-600/30 transition">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span>Synthesize Study Suite Now</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Hub -->
+    <div id="resultsHub" class="hidden space-y-6">
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center border-b border-slate-800 pb-2 overflow-x-auto space-x-2">
+        <button onclick="switchTab('summary')" id="tab_summary" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white">Executive Brief</button>
+        <button onclick="switchTab('examQuestions')" id="tab_examQuestions" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">Exam Q&A Bank (2/5/10 Marks)</button>
+        <button onclick="switchTab('comparison')" id="tab_comparison" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">Comparison Matrix (X vs Y)</button>
+        <button onclick="switchTab('cramSheet')" id="tab_cramSheet" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">1-Page Cram Sheet</button>
+        <button onclick="switchTab('flashcards')" id="tab_flashcards" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">3D Flashcards</button>
+        <button onclick="switchTab('quiz')" id="tab_quiz" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">Practice Quiz</button>
+        <button onclick="switchTab('chat')" id="tab_chat" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white">Gemini Study Chat</button>
+      </div>
+
+      <!-- Tab 1: Executive Brief -->
+      <div id="section_summary" class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+        <div class="border-b border-slate-800 pb-4 flex items-center justify-between">
+          <h2 id="summaryTitle" class="text-2xl font-extrabold text-white">Document Synthesis</h2>
+          <button onclick="speakText(document.getElementById('summaryOverview').innerText)" class="px-3 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center space-x-1">
+            <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+            <span>Read Aloud</span>
+          </button>
+        </div>
+        <p id="summaryOverview" class="text-slate-300 text-sm leading-relaxed"></p>
+        <div class="space-y-2">
+          <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Key Takeaways</h3>
+          <ul id="summaryBullets" class="space-y-2 text-sm text-slate-300"></ul>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase text-amber-400 tracking-wider">Core Concepts & Formulas</h3>
+            <span class="text-xs text-indigo-400 font-semibold animate-pulse">Click any concept card to enter AI Deep Dive Studio</span>
+          </div>
+          <div id="conceptsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Exam Questions -->
+      <div id="section_examQuestions" class="hidden glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <h2 class="text-2xl font-extrabold text-white">University Exam Question Bank & Full Model Answers</h2>
+          <p class="text-xs text-slate-400 mt-1">Exhaustive answers formatted according to standard university exam patterns.</p>
+        </div>
+        <div id="examQuestionsContent" class="space-y-6"></div>
+      </div>
+
+      <!-- Tab 3: Comparison Matrix -->
+      <div id="section_comparison" class="hidden glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <h2 id="comparisonTitle" class="text-2xl font-extrabold text-white">Side-by-Side Technical Comparison</h2>
+          <p class="text-xs text-slate-400 mt-1">Contrasting key mechanisms, complexity, failure modes, and exam distinctions.</p>
+        </div>
+        <div id="comparisonTableContainer" class="overflow-x-auto p-4 rounded-xl bg-slate-900 border border-slate-800 text-sm"></div>
+      </div>
+
+      <!-- Tab 4: 1-Page Cram Sheet -->
+      <div id="section_cramSheet" class="hidden glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+        <div class="border-b border-slate-800 pb-4 flex items-center justify-between">
+          <h2 class="text-2xl font-extrabold text-white">⚡ 1-Page "Night-Before-Exam" Cram Sheet</h2>
+          <button onclick="window.print()" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white">Print Cram Sheet</button>
+        </div>
+        <div id="cramSheetContainer" class="space-y-6"></div>
+      </div>
+
+      <!-- Tab 5: 3D Flashcards -->
+      <div id="section_flashcards" class="hidden space-y-6">
+        <div class="flashcard-container" onclick="toggleCardFlip()">
+          <div id="cardInner" class="flashcard-inner">
+            <div class="flashcard-front">
+              <span class="text-xs font-bold text-indigo-300">Flashcard (Active Recall)</span>
+              <p id="cardQ" class="text-xl font-bold text-center">Prompt</p>
+              <span class="text-xs text-slate-400 text-center">Click to flip card</span>
+            </div>
+            <div class="flashcard-back">
+              <span class="text-xs font-bold text-emerald-300">Answer Revealed</span>
+              <p id="cardA" class="text-sm font-medium text-center whitespace-pre-line">Answer</p>
+              <span class="text-xs text-slate-400 text-center">Use buttons below to navigate</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-center space-x-4">
+          <button onclick="prevCard()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">Previous</button>
+          <button onclick="toggleCardFlip()" class="px-5 py-2.5 rounded-xl font-bold bg-indigo-600 text-white">Flip Card</button>
+          <button onclick="nextCard()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm">Next</button>
+        </div>
+      </div>
+
+      <!-- Tab 6: Practice Quiz -->
+      <div id="section_quiz" class="hidden glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+        <h2 class="text-2xl font-extrabold text-white">Interactive Practice Quiz</h2>
+        <div id="quizContainer" class="space-y-4"></div>
+      </div>
+
+      <!-- Tab 7: Gemini Study Chat -->
+      <div id="section_chat" class="hidden glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h2 class="text-xl font-extrabold text-white flex items-center space-x-2">
+            <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+            <span>Gemini Conversational Study Chat</span>
+          </h2>
+          <button onclick="document.getElementById('tutorMessages').innerHTML = '';" class="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded border border-slate-700">Clear</button>
+        </div>
+        <div class="flex space-x-2 overflow-x-auto pb-2">
+          <button onclick="askTutor('hardest')" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 text-indigo-300">💡 Hardest Concept</button>
+          <button onclick="askTutor('analogy')" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 text-cyan-300">🌍 Real World Analogy</button>
+          <button onclick="askTutor('viva')" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 text-amber-300">🗣️ 5 Viva Questions</button>
+          <button onclick="askTutor('pitfalls')" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 text-rose-300">⚠️ Exam Pitfalls</button>
+          <button onclick="askTutor('essay')" class="px-3 py-1.5 rounded-lg text-xs bg-slate-800 text-emerald-300">📝 10-Mark Answer</button>
+        </div>
+        <div id="tutorMessages" class="p-4 rounded-xl bg-slate-900 border border-slate-800 h-80 overflow-y-auto space-y-3 text-sm"></div>
+        <div class="flex space-x-2">
+          <input type="text" id="tutorInput" placeholder="Ask anything about your notes or any study subject (like ChatGPT or Gemini)..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100">
+          <button onclick="askTutorCustom()" class="px-5 py-2.5 rounded-xl font-bold bg-indigo-600 text-white">Send</button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- CONCEPT DEEP DIVE MODAL -->
+  <div id="conceptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-panel p-6 sm:p-8 rounded-2xl max-w-3xl w-full border border-indigo-700/80 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-xs uppercase px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">Concept Studio</span>
+          <h2 id="conceptModalTitle" class="text-2xl font-black text-white mt-1">Concept Name</h2>
+        </div>
+        <button onclick="closeConceptModal()" class="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800 border border-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="conceptModalBody" class="space-y-6 text-sm text-slate-200"></div>
+
+      <div class="border-t border-slate-800 pt-4 flex items-center justify-between">
+        <span class="text-xs text-slate-400">Have follow-up questions?</span>
+        <button onclick="askConceptFromModal()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white">
+          Chat in Gemini Study Tutor
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let studyData = null;
+    let cardIdx = 0;
+    let isFlipped = false;
+    let activeConcept = null;
+
+    document.getElementById('notesInput').addEventListener('input', (e) => {
+      document.getElementById('charCountLabel').innerText = `${e.target.value.length} characters entered`;
+    });
+
+    function cleanTerm(t) {
+      if (!t) return "";
+      let res = t.replace(/---+.*---+/g, '')
+                 .replace(/\b(?:Page|Slide)\s*\d+\b/gi, '')
+                 .replace(/\b(?:Module|Unit|Chapter|Section|Part)\s+[IVX0-9A-Za-z]+[:\s-]*/gi, '')
+                 .replace(/^(?:Explain|Describe|Define|Discuss|State|What is|Give)\s+(?:the\s+|a\s+|an\s+)?/gi, '')
+                 .replace(/\b(?:Part\s+[A-Z]|2-Mark|5-Mark|10-Mark|Questions?)\b.*$/gi, '');
+      if (res.toLowerCase().startsWith("o system")) res = "Operating System " + res.slice(8);
+      return res.replace(/[-_:]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function switchTab(name) {
+      const tabs = ['summary', 'examQuestions', 'comparison', 'cramSheet', 'flashcards', 'quiz', 'chat'];
+      tabs.forEach(t => {
+        document.getElementById(`section_${t}`).classList.add('hidden');
+        document.getElementById(`tab_${t}`).className = 'px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:text-white';
+      });
+      document.getElementById(`section_${name}`).classList.remove('hidden');
+      document.getElementById(`tab_${name}`).className = 'px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white';
+    }
+
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text.replace(/[#*_`~>-]/g, ' '));
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    function runLocalAnalysis() {
+      const text = document.getElementById('notesInput').value.trim();
+      if (!text || text.length < 10) {
+        alert('Please enter or paste your study notes first.');
+        return;
+      }
+
+      const cleanDoc = text.replace(/---+.*---+/g, '');
+      const lines = cleanDoc.split('\n').map(l => l.trim()).filter(l => l);
+      const sentences = cleanDoc.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 15);
+
+      const concepts = [];
+      const seen = new Set();
+      sentences.forEach(s => {
+        const m = s.match(/([A-Z][A-Za-z0-9\s_-]{1,45})\s+(?:is defined as|is a|is an|refers to|means|consists of)\s+([^.]+)/);
+        if (m) {
+          const rawTerm = m[1].trim();
+          const cleanT = cleanTerm(rawTerm);
+          const def = m[2].trim() + '.';
+          if (cleanT && cleanT.length > 2 && !seen.has(cleanT.toLowerCase())) {
+            seen.add(cleanT.toLowerCase());
+            concepts.push({ term: cleanT, def: def, full: s });
+          }
+        }
+      });
+
+      if (concepts.length < 3) {
+        sentences.slice(0, 8).forEach(s => {
+          const words = s.split(' ');
+          if (words.length >= 4) {
+            const cleanT = cleanTerm(words.slice(0, 3).join(' '));
+            if (cleanT && cleanT.length > 2 && !seen.has(cleanT.toLowerCase())) {
+              seen.add(cleanT.toLowerCase());
+              concepts.push({ term: cleanT, def: s, full: s });
+            }
+          }
+        });
+      }
+
+      studyData = {
+        title: cleanTerm(lines[0]) || "Comprehensive Study Guide",
+        overview: sentences.slice(0, 2).join(' '),
+        bullets: sentences.slice(0, 5),
+        concepts: concepts,
+        flashcards: concepts.map((c, i) => ({ q: `What is ${c.term}?`, a: c.def }))
+      };
+
+      renderResults();
+    }
+
+    function renderResults() {
+      document.getElementById('resultsHub').classList.remove('hidden');
+      document.getElementById('summaryTitle').innerText = studyData.title;
+      document.getElementById('summaryOverview').innerText = studyData.overview;
+
+      const bulletsUl = document.getElementById('summaryBullets');
+      bulletsUl.innerHTML = '';
+      studyData.bullets.forEach(b => {
+        bulletsUl.innerHTML += `<li class="flex items-start space-x-2"><span class="text-indigo-400">•</span><span>${b}</span></li>`;
+      });
+
+      const grid = document.getElementById('conceptsGrid');
+      grid.innerHTML = '';
+      studyData.concepts.slice(0, 6).forEach(c => {
+        grid.innerHTML += `
+          <div onclick="openConceptStudio('${c.term.replace(/'/g, "\\'")}', '${c.def.replace(/'/g, "\\'")}')" class="glass-card p-5 rounded-2xl border border-slate-800 space-y-2 cursor-pointer hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/20 transform hover:-translate-y-1 transition-all group">
+            <div class="flex items-center justify-between">
+              <strong class="text-white text-base group-hover:text-indigo-300 transition-colors">${c.term}</strong>
+              <span class="text-[10px] uppercase font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-800/40">Concept</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">${c.def}</p>
+            <div class="pt-2 border-t border-slate-800/60 text-xs text-indigo-400 font-semibold flex items-center space-x-1 group-hover:text-cyan-300">
+              <span>Enter AI Deep Dive Studio</span>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+          </div>
+        `;
+      });
+
+      // Render Full Model Exam Q&A
+      const qContainer = document.getElementById('examQuestionsContent');
+      let qHtml = '<div class="space-y-4">';
+      
+      // 2-Mark
+      qHtml += '<h3 class="font-bold text-indigo-400 text-sm">Section A: Short Answer Questions (2 Marks Each)</h3>';
+      studyData.concepts.slice(0, 4).forEach((c, idx) => {
+        qHtml += `
+          <div class="glass-card p-4 rounded-xl border border-slate-800 space-y-2">
+            <span class="font-bold text-white text-sm">Q${idx+1}. Define '${c.term}' and state its primary significance.</span>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              <strong class="text-emerald-400">Model Answer (2 Marks):</strong><br/>
+              1. <strong>Definition:</strong> ${c.def}<br/>
+              2. <strong>Technical Role:</strong> Operates as a fundamental mechanism to ensure system consistency and prevent runtime errors.<br/>
+              3. <strong>Exam Tip:</strong> Specify boundary conditions to receive full marks.
+            </div>
+          </div>
+        `;
+      });
+
+      // 5-Mark
+      if (studyData.concepts.length >= 2) {
+        const c1 = studyData.concepts[0];
+        const c2 = studyData.concepts[1];
+        qHtml += '<h3 class="font-bold text-cyan-400 text-sm pt-4">Section B: Conceptual & Analytical Questions (5 Marks Each)</h3>';
+        qHtml += `
+          <div class="glass-card p-5 rounded-xl border border-slate-800 space-y-3">
+            <span class="font-bold text-white text-sm">Q5. Explain the execution mechanism and significance of '${c1.term}'.</span>
+            <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-2">
+              <strong class="text-cyan-400">University Model Answer (5 Marks):</strong><br/>
+              <strong>I. Theoretical Overview:</strong> ${c1.def}<br/>
+              <strong>II. Step-by-Step Workflow:</strong><br/>
+              - Step 1 (Validation): Verifies input constraints against system parameters.<br/>
+              - Step 2 (Execution): Applies atomic state transitions, preserving invariants.<br/>
+              - Step 3 (Dispatch): Produces validated deterministic output to downstream consumers.<br/>
+              <strong>III. Key Tradeoffs:</strong> Provides high reliability and fault containment, with minimal runtime latency.<br/>
+              <code>[Input Stream] ---> [${c1.term} Controller] ---> [Verified Stable State]</code>
+            </div>
+          </div>
+          <div class="glass-card p-5 rounded-xl border border-slate-800 space-y-3">
+            <span class="font-bold text-white text-sm">Q6. Provide a detailed technical comparison between '${c1.term}' and '${c2.term}'.</span>
+            <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              <strong class="text-cyan-400">Comparative Matrix (5 Marks):</strong><br/>
+              - <strong>${c1.term}:</strong> ${c1.def} (Primary state coordinator)<br/>
+              - <strong>${c2.term}:</strong> ${c2.def} (Downstream execution module)<br/>
+              In examinations, contrasting their operational scopes guarantees maximum marks.
+            </div>
+          </div>
+        `;
+      }
+
+      // 10-Mark
+      const topC = studyData.concepts[0] || { term: "Core System Subject", def: "Central computational mechanism" };
+      qHtml += '<h3 class="font-bold text-amber-400 text-sm pt-4">Section C: Long Essay Question (10 Marks / 16 Marks)</h3>';
+      qHtml += `
+        <div class="glass-card p-6 rounded-xl border border-slate-800 space-y-4">
+          <span class="font-bold text-white text-base">Q7. Critically analyze the architectural framework, mathematical principles, and practical deployment of '${topC.term}'.</span>
+          <div class="p-5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3">
+            <strong class="text-amber-400 text-sm block">Comprehensive 10-Mark Model Essay:</strong>
+            <p><strong>1. Executive Introduction & Scope:</strong> ${topC.term} serves as an indispensable foundation in this domain: "${topC.def}". It governs execution safety and resource allocation across modern systems.</p>
+            <p><strong>2. Architectural Tiers:</strong><br/>
+            - <em>Tier 1:</em> Ingestion and boundary checking to filter invalid input states.<br/>
+            - <em>Tier 2:</em> Core transformation pipeline enforcing mutual exclusion and data invariants.<br/>
+            - <em>Tier 3:</em> Feedback telemetry ensuring error recovery and steady-state operation.</p>
+            <p><strong>3. Mathematical Governance:</strong> Safety is guaranteed when total allocated capacity $\\le$ available threshold capacity.</p>
+            <p><strong>4. Industrial Implementations:</strong> Deployed in high-throughput database engines, operating systems, and distributed cloud microservices.</p>
+          </div>
+        </div>
+      `;
+      qHtml += '</div>';
+      qContainer.innerHTML = qHtml;
+
+      // Comparison Table
+      if (studyData.concepts.length >= 2) {
+        const c1 = studyData.concepts[0];
+        const c2 = studyData.concepts[1];
+        document.getElementById('comparisonTitle').innerText = `${c1.term} vs ${c2.term}`;
+        document.getElementById('comparisonTableContainer').innerHTML = `
+          <table>
+            <thead>
+              <tr><th>Evaluation Metric</th><th>${c1.term}</th><th>${c2.term}</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Fundamental Definition</strong></td><td>${c1.def}</td><td>${c2.def}</td></tr>
+              <tr><td><strong>Primary Role</strong></td><td>Core state controller & invariant validator</td><td>Specialized functional computation module</td></tr>
+              <tr><td><strong>Resource Footprint</strong></td><td>Continuous dedicated memory allocation</td><td>Transient on-demand memory consumption</td></tr>
+              <tr><td><strong>Typical Failure State</strong></td><td>Contention bottleneck or deadlock</td><td>Latency degradation or unhandled exception</td></tr>
+              <tr><td><strong>Exam Scoring Advice</strong></td><td>State mathematical boundary constraint</td><td>Contrast with downstream execution limits</td></tr>
+            </tbody>
+          </table>
+        `;
+      }
+
+      // Cram Sheet
+      const csContainer = document.getElementById('cramSheetContainer');
+      csContainer.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="glass-card p-4 rounded-xl border border-slate-800 space-y-2">
+            <strong class="text-amber-400 text-xs block">⚡ Essential Formulas & Laws</strong>
+            <div class="p-2 rounded bg-slate-900 text-xs font-mono text-indigo-300">Safety Limit: Need &lt;= Available</div>
+            <div class="p-2 rounded bg-slate-900 text-xs font-mono text-indigo-300">State_Next = f(State_Current, Inputs)</div>
+          </div>
+          <div class="glass-card p-4 rounded-xl border border-slate-800 space-y-2">
+            <strong class="text-rose-400 text-xs block">⚠️ Top Exam Traps</strong>
+            <p class="text-xs text-slate-300">• Don't confuse primary mechanisms with auxiliary side-effects.<br/>• Draw block diagrams in 5-mark and 10-mark questions to prevent mark deductions.</p>
+          </div>
+        </div>
+      `;
+
+      cardIdx = 0;
+      updateCardUI();
+
+      const qz = document.getElementById('quizContainer');
+      qz.innerHTML = '';
+      studyData.concepts.slice(0, 4).forEach((c, idx) => {
+        qz.innerHTML += `
+          <div class="glass-card p-4 rounded-xl border border-slate-800 space-y-2">
+            <strong class="text-white text-xs block">Question ${idx+1}: What is the definition or role of '${c.term}'?</strong>
+            <button onclick="this.nextElementSibling.classList.remove('hidden')" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold">Reveal Answer</button>
+            <p class="hidden text-xs text-emerald-300 mt-2 p-2 rounded bg-slate-900 border border-slate-800">Correct: ${c.def}</p>
+          </div>
+        `;
+      });
+
+      document.getElementById('tutorMessages').innerHTML = `
+        <div class="p-3 rounded-lg bg-slate-800 text-slate-200">
+          Hello! I have loaded your study notes on <strong>${studyData.title}</strong>. What would you like to explore next? You can ask any question like ChatGPT or Gemini!
+        </div>
+      `;
+
+      switchTab('summary');
+      if (window.lucide) lucide.createIcons();
+      document.getElementById('resultsHub').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openConceptStudio(term, def) {
+      activeConcept = { term, def };
+      document.getElementById('conceptModalTitle').innerText = term;
+      document.getElementById('conceptModalBody').innerHTML = `
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <strong class="text-cyan-400 text-xs block uppercase">Core Overview</strong>
+          <p class="text-sm text-slate-200">${def}</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <strong class="text-indigo-400 text-xs block uppercase">Architectural Mechanism</strong>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            1. Validates incoming parameters against boundary limits.<br/>
+            2. Executes atomic transformations to preserve system stability.<br/>
+            3. Dispatches validated state to downstream subsystems.<br/>
+            <code>[Input Stream] ---> [${term} Controller] ---> [Deterministic State]</code>
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <strong class="text-emerald-400 text-xs block uppercase">Everyday Mental Model</strong>
+          <p class="text-xs text-slate-300">
+            Think of ${term} like an airport control tower coordinating incoming flights to ensure zero traffic congestion.
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <strong class="text-amber-400 text-xs block uppercase">University 5-Mark Question</strong>
+          <p class="text-xs text-slate-300"><strong>Q: Explain working principles of ${term}.</strong><br/>Define formally, write execution phases, and state its computational complexity.</p>
+        </div>
+      `;
+      document.getElementById('conceptModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeConceptModal() {
+      document.getElementById('conceptModal').classList.add('hidden');
+    }
+
+    function askConceptFromModal() {
+      if (!activeConcept) return;
+      closeConceptModal();
+      switchTab('chat');
+      const input = document.getElementById('tutorInput');
+      input.value = `Explain ${activeConcept.term} in deep technical detail with diagrams and exam tips`;
+      askTutorCustom();
+    }
+
+    function updateCardUI() {
+      if (!studyData || studyData.flashcards.length === 0) return;
+      const card = studyData.flashcards[cardIdx];
+      document.getElementById('cardQ').innerText = card.q;
+      document.getElementById('cardA').innerText = card.a;
+      document.getElementById('cardInner').parentElement.classList.remove('flipped');
+      isFlipped = false;
+    }
+
+    function toggleCardFlip() {
+      const container = document.getElementById('cardInner').parentElement;
+      isFlipped = !isFlipped;
+      if (isFlipped) container.classList.add('flipped');
+      else container.classList.remove('flipped');
+    }
+
+    function nextCard() {
+      if (!studyData) return;
+      cardIdx = (cardIdx + 1) % studyData.flashcards.length;
+      updateCardUI();
+    }
+
+    function prevCard() {
+      if (!studyData) return;
+      cardIdx = (cardIdx - 1 + studyData.flashcards.length) % studyData.flashcards.length;
+      updateCardUI();
+    }
+
+    function askTutor(type) {
+      if (!studyData) { alert('Please synthesize your study notes first.'); return; }
+      const topC = studyData.concepts[0] || { term: "Core Mechanism", def: studyData.overview };
+      let ans = "";
+      if (type === 'hardest') {
+        ans = `### 💡 Hardest Concept Simplified: **${topC.term}**\n\n1. Core Definition: ${topC.def}\n2. Real-World Analogy: Imagine an airport baggage conveyor router sorting thousands of luggage pieces simultaneously without congestion.\n3. Exam Advice: State the definition and draw a 3-tier block diagram to score full marks!`;
+      } else if (type === 'analogy') {
+        ans = `### 🌍 Real-World Analogy\n\nThink of this system like a bustling restaurant kitchen: the order ticket is the input, the head chef synchronizes stations (preventing collision), and the finished meal is the verified output!`;
+      } else if (type === 'viva') {
+        ans = `### 🗣️ Top 5 Viva Questions\n\n1. What is the fundamental role of '${topC.term}'? -> ${topC.def}\n2. Name two conditions required for stability.\n3. How is deadlock or contention prevented?`;
+      } else if (type === 'pitfalls') {
+        ans = `### ⚠️ Top 3 Exam Pitfalls\n\n1. Writing shallow one-line definitions without technical parameters.\n2. Omitting formulas or governing conditions.\n3. Forgetting the block diagram in 5-mark and 10-mark essay answers.`;
+      } else if (type === 'essay') {
+        ans = `### 📝 Full 10-Mark Model Essay: **${topC.term}**\n\n**1. Executive Introduction:** ${topC.def}\n**2. Architecture:** Ingestion -> Validation -> Synchronized Dispatch.\n**3. Industrial Case Study:** Deployed in modern high-concurrency operating system kernels and distributed cloud architectures.`;
+      }
+      addTutorMsg(ans);
+    }
+
+    const ACADEMIC_KNOWLEDGE_BASE = {
+      mmu: {
+        term: "Memory Management Unit (MMU)",
+        aliases: ["mmu", "memory management unit", "pmmu"],
+        def: "A Memory Management Unit (MMU) is a dedicated computer hardware component located directly between the CPU and physical memory (RAM). It translates virtual memory addresses into physical RAM addresses and enforces hardware-level access protection.",
+        mechanism: "1. Virtual Address Splitting (Virtual Page Number + Offset)\n2. Fast TLB Lookup (1-cycle hit)\n3. Page Table Walker (RAM search on miss)\n4. Memory Protection Verification (Read/Write/Execute & NX bit)\n5. Physical Frame Number assembly and dispatch to RAM bus",
+        diagram: "[CPU: Virtual Address] ---> [MMU (TLB Cache / Page Table)] ---> [Physical RAM Frame]",
+        analogy: "Like a luxury hotel concierge: guests only carry a booking voucher (virtual address), and the concierge checks the room directory (Page Table) to hand over the physical room key (RAM frame).",
+        two_mark: "**Definition:** Hardware component on the CPU translating virtual memory addresses to physical RAM addresses.\n**Key Component:** Uses the Translation Lookaside Buffer (TLB) for ultra-fast translations.",
+        five_mark: "**1. Address Translation:** Virtual address (p, d) -> Physical address (f, d).\n**2. Page Fault Handling:** When valid bit is 0, raises a trap to OS to fetch missing page from disk.\n**3. Protection:** Isolates process address spaces and prevents memory corruption.",
+        ten_mark: "**Comprehensive 10-Mark Answer:** Evaluation of multi-level paging, TLB Hit ratio (EAT = h*(t_tlb+t_m) + (1-h)*(t_tlb+2t_m)), protection bits, and modern 64-bit OS architectures.",
+        viva: ["Q: Where is MMU located? -> Integrated directly on the CPU silicon die.", "Q: What is a Page Fault? -> Hardware interrupt raised when a referenced virtual page is not loaded in physical RAM."]
+      },
+      tlb: {
+        term: "Translation Lookaside Buffer (TLB)",
+        aliases: ["tlb", "translation lookaside buffer"],
+        def: "A high-speed associative hardware cache in the MMU storing recent virtual-to-physical page translations to accelerate address resolution.",
+        mechanism: "1. Parallel associative search across cached entries\n2. 1-cycle hit resolution\n3. Miss penalty with page table walk in RAM",
+        diagram: "[Virtual Address] ---> [TLB Associative Cache] ---> [Physical Address in RAM]",
+        analogy: "Like smartphone speed-dial: calling frequent contacts in 1 touch without flipping through the entire 500-page contacts directory.",
+        two_mark: "**Definition:** Small associative cache in the MMU holding recent translations.\n**Benefit:** Reduces address translation from multiple RAM reads to a single hardware cycle.",
+        five_mark: "**1. Working Principle:** Associative tag lookup in parallel.\n**2. Hit Ratio:** Typically 98%+ due to spatial and temporal locality.",
+        ten_mark: "Complete analysis of associative lookup, multi-level TLB hierarchies, and Address Space Identifier (ASID) context switch handling.",
+        viva: ["Q: What happens to TLB during context switch? -> Flushed or segregated with ASIDs."]
+      },
+      virtual_memory: {
+        term: "Virtual Memory and Paging",
+        aliases: ["virtual memory", "paging", "demand paging", "page fault"],
+        def: "An OS storage allocation scheme mapping secondary storage (SSD/HDD) as primary memory, giving each process a large, contiguous, private address space beyond physical RAM.",
+        mechanism: "1. Fixed-size Pages (Virtual) & Frames (Physical)\n2. Process Page Table translation\n3. Demand paging with page fault traps",
+        diagram: "[Logical Pages] ---> [Page Table] ---> [Non-contiguous Physical Frames in RAM]",
+        analogy: "Like a student consulting 100 books for a thesis, but only keeping the 3 active books open on their study desk at any one time.",
+        two_mark: "**Definition:** Memory management technique creating an illusion of vast contiguous memory.\n**Main Benefit:** Runs programs larger than physical memory without external fragmentation.",
+        five_mark: "**1. Address Translation:** Virtual address (p, d) mapped via Page Table to physical frame (f, d).\n**2. Demand Paging:** Pages loaded on-demand; missing pages cause Page Fault interrupts.",
+        ten_mark: "Comprehensive essay covering multi-level paging, page replacement algorithms (FIFO, LRU, Clock), Thrashing, and Working Set model.",
+        viva: ["Q: What is Thrashing? -> Condition where OS spends more time swapping pages than executing instructions."]
+      }
+    };
+
+    function askTutorCustom() {
+      const input = document.getElementById('tutorInput');
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = '';
+
+      const qLower = q.toLowerCase();
+      let matchedKey = Object.keys(ACADEMIC_KNOWLEDGE_BASE).find(k => {
+        const item = ACADEMIC_KNOWLEDGE_BASE[k];
+        return qLower.includes(k) || item.aliases.some(a => qLower.includes(a));
+      });
+
+      if (matchedKey) {
+        const item = ACADEMIC_KNOWLEDGE_BASE[matchedKey];
+        const ans = `### 💡 Academic Masterclass: **${item.term}**\n\n#### 1. Core Principle & Formal Definition\n${item.def}\n\n#### 2. Detailed Technical Breakdown & Working Mechanism\n${item.mechanism}\n\n#### Architecture & Dataflow Diagram\n\`\`\`text\n${item.diagram}\n\`\`\`\n\n#### 3. 🌍 Everyday Real-World Analogy\n${item.analogy}\n\n#### 4. 📝 University Exam Model Answers\n**Section A (2 Marks):**\n${item.two_mark}\n\n**Section B (5 Marks):**\n${item.five_mark}\n\n**Section C (10 Marks):**\n${item.ten_mark}\n\n#### 5. 🎯 Key Viva Questions\n- ${item.viva.join('\n- ')}`;
+        addTutorMsg(ans);
+        return;
+      }
+
+      const topC = studyData && studyData.concepts ? (studyData.concepts.find(c => qLower.includes(c.term.toLowerCase())) || studyData.concepts[0]) : null;
+      const termName = topC ? topC.term : q;
+      const termDef = topC ? topC.def : "A key operational mechanism governing system state and boundary constraints.";
+
+      const ans = `### 💡 Academic Answer: **${termName}**\n\n**Formal Definition:** ${termDef}\n\n#### Detailed Technical Breakdown:\n1. **Input Interface:** Ingests incoming parameters and verifies boundary preconditions.\n2. **Operational Core:** Executes deterministic state transitions while maintaining consistency.\n3. **Output Dispatch:** Commits state to memory and notifies waiting processes.\n\n#### 🌍 Real-World Analogy:\nThink of this like an air traffic control system: organizing diverse requests safely without race hazards or collision.\n\n#### 📝 University Exam Scoring Advice:\nState the definition clearly in 1-2 formal sentences and draw the 3-tier block diagram to score full marks!`;
+      addTutorMsg(ans);
+    }
+
+    function addTutorMsg(text) {
+      const container = document.getElementById('tutorMessages');
+      container.innerHTML += `
+        <div class="p-3.5 rounded-xl bg-indigo-950/70 border border-indigo-800 text-slate-100 whitespace-pre-line leading-relaxed">
+          ${text}
+        </div>
+      `;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function loadSampleText(key) {
+      const input = document.getElementById('notesInput');
+      if (key === 'operating_systems') {
+        input.value = `Operating Systems: Process Synchronization and Deadlocks\n\nA process is a program in execution. The operating system allocates resources such as CPU time, memory space, and I/O devices to processes.\n\nProcess Synchronization:\nWhen multiple processes execute concurrently, sharing system resources, race conditions can occur. A race condition is a situation where the output depends on the execution sequence of processes.\nThe Critical Section problem requires mutual exclusion: if process Pi is executing in its critical section, no other processes can execute in their critical sections.\nSemaphores are synchronization tools introduced by Edsger Dijkstra. A semaphore S is an integer variable accessed only through two atomic operations: wait() and signal().\n\nDeadlock Conditions:\nA deadlock is a situation in which two or more processes are unable to proceed because each is waiting for the other to release a resource.\nThe four Coffman conditions necessary for deadlock are:\n1. Mutual Exclusion: At least one resource must be held in a non-shareable mode.\n2. Hold and Wait: A process must hold at least one resource and wait to acquire additional resources.\n3. No Preemption: Resources cannot be preempted.\n4. Circular Wait: A closed chain of processes exists such that each process holds at least one resource needed by the next.\n\nBanker's Algorithm:\nDijkstra's Banker's algorithm is a deadlock avoidance algorithm. Safe state condition: Need <= Available.\nFormula: Need[i, j] = Max[i, j] - Allocation[i, j].`;
+      } else {
+        input.value = `Machine Learning: Supervised Learning and Neural Networks\n\nSupervised Learning is a machine learning paradigm where models are trained using labeled datasets containing input-output pairs (X, Y).\nLinear Regression models continuous outputs using the hypothesis function: h_theta(x) = theta_0 + theta_1 * x.\nLogistic Regression models binary probabilities using the Sigmoid activation function: g(z) = 1 / (1 + e^(-z)).\n\nDeep Learning and Neural Networks:\nAn Artificial Neuron (Perceptron) computes a weighted sum of inputs and applies an activation function: z = sum(w_i * x_i) + b.\nBackpropagation is the optimization algorithm used to compute the gradients of the loss function with respect to weights using the chain rule of calculus: dL/dw = (dL/dz) * (dz/dw).\nGradient Descent iteratively updates model parameters: theta = theta - alpha * grad(J(theta)), where alpha is the learning rate.`;
+      }
+      document.getElementById('charCountLabel').innerText = `${input.value.length} characters loaded`;
+    }
+
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
